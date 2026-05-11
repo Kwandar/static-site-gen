@@ -1,5 +1,5 @@
 import unittest
-from process_markdown import split_nodes_delimiter
+from process_markdown import split_nodes_delimiter, extract_markdown_images, extract_markdown_links
 from textnode import TextNode, TextType
 
 class TestSplitNodesDelimiter(unittest.TestCase):
@@ -83,6 +83,39 @@ class TestSplitNodesDelimiter(unittest.TestCase):
         result = split_nodes_delimiter(nodes, "**", TextType.BOLD)
         expected = [TextNode("bold", TextType.BOLD), TextNode(" text", TextType.PLAIN)]
         self.assertEqual(result, expected)
+
+    def test_extract_markdown_images(self):
+        matches = extract_markdown_images(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
+        )
+        self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], matches)
+
+    def test_extract_markdown_links(self):
+        text = "Here is a link: [example](http://example.com)"
+        result = extract_markdown_links(text)
+        expected = [("example", "http://example.com")]
+        self.assertEqual(result, expected)
+
+    def test_extract_multiple_images_and_links(self):
+        text = "Image: ![alt](http://example.com/image.jpg) and Link: [example](http://example.com)"
+        images = extract_markdown_images(text)
+        links = extract_markdown_links(text)
+        self.assertEqual(images, [("alt", "http://example.com/image.jpg")])
+        self.assertEqual(links, [("example", "http://example.com")])
+
+    def test_extract_no_images_or_links(self):
+        text = "No images or links here."
+        images = extract_markdown_images(text)
+        links = extract_markdown_links(text)
+        self.assertEqual(images, [])
+        self.assertEqual(links, [])
+    
+    def test_extract_malformed_markdown(self):
+        text = "Malformed image ![alt](http://example.com/image.jpg and malformed link [example(http://example.com)"
+        images = extract_markdown_images(text)
+        links = extract_markdown_links(text)
+        self.assertEqual(images, [])
+        self.assertEqual(links, [])
 
 if __name__ == "__main__":
     unittest.main()
