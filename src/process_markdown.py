@@ -25,3 +25,52 @@ def extract_markdown_images(text):
 def extract_markdown_links(text):
     pattern = r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)"
     return re.findall(pattern, text)
+
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.PLAIN:
+            new_nodes.append(node)
+        else:
+            images = extract_markdown_images(node.text)
+            if not images:
+                new_nodes.append(node)
+            else:
+                split_text = re.split(r"!\[[^\[\]]*\]\([^\(\)]*\)", node.text)
+                for i, text in enumerate(split_text):
+                    if text:
+                        new_nodes.append(TextNode(text, TextType.PLAIN))
+                    if i < len(images):
+                        alt_text, url = images[i]
+                        new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.PLAIN:
+            new_nodes.append(node)
+        else:
+            links = extract_markdown_links(node.text)
+            if not links:
+                new_nodes.append(node)
+            else:
+                split_text = re.split(r"(?<!!)\[[^\[\]]*\]\([^\(\)]*\)", node.text)
+                for i, text in enumerate(split_text):
+                    if text:
+                        new_nodes.append(TextNode(text, TextType.PLAIN))
+                    if i < len(links):
+                        link_text, url = links[i]
+                        new_nodes.append(TextNode(link_text, TextType.LINK, url))
+    return new_nodes
+
+def text_to_text_nodes(text):
+    nodes = [TextNode(text, TextType.PLAIN)]
+    nodes = split_nodes_image(nodes)
+    nodes = split_nodes_link(nodes)
+    # now we split text with delimiter for bold, italic, and code
+    nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "*", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    nodes = [node for node in nodes if node.text]  # remove empty nodes
+    return nodes
