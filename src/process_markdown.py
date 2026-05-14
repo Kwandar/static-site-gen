@@ -74,3 +74,12 @@ def text_to_text_nodes(text):
     nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
     nodes = [node for node in nodes if node.text]  # remove empty nodes
     return nodes
+
+def markdown_to_blocks(markdown):
+    lines = markdown.split("\n\n")  # split by double newlines to get blocks
+    blocks = []
+    for line in lines:
+        if line.strip() == "":
+            continue
+        blocks.append(line.strip())
+    return blocks

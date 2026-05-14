@@ -1,5 +1,5 @@
 import unittest
-from process_markdown import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_text_nodes
+from process_markdown import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_text_nodes, markdown_to_blocks
 from textnode import TextNode, TextType
 
 class TestSplitNodesDelimiter(unittest.TestCase):
@@ -249,6 +249,53 @@ class TestSplitNodesDelimiter(unittest.TestCase):
             TextNode("link", TextType.LINK, "http://example.com")
         ]
         self.assertEqual(result, expected)
+
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items"
+            ],
+        )
+    
+    def test_markdown_to_blocks_empty_string(self):
+        md = ""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, [])
+
+    def test_markdown_to_blocks_single_line_paragraph(self):
+        md = "Hello world"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, ["Hello world"])
+
+    def test_markdown_to_blocks_multiple_consecutive_blank_lines(self):
+        md = "Paragraph one\n\n\nParagraph two"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, ["Paragraph one", "Paragraph two"])
+
+    def test_markdown_to_blocks_preserve_internal_newlines_and_lists(self):
+        md = "line1\nline2\n\n- item1\n- item2\n\nlast paragraph"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "line1\nline2",
+                "- item1\n- item2",
+                "last paragraph"
+            ],
+        )
 
 if __name__ == "__main__":
     unittest.main()
