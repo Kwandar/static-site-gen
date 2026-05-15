@@ -1,8 +1,11 @@
 import unittest
-from process_markdown import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_text_nodes, markdown_to_blocks
+from process_markdown import split_nodes_delimiter, split_nodes_image, split_nodes_link
+from process_markdown import extract_markdown_images, extract_markdown_links
+from process_markdown import text_to_text_nodes, markdown_to_blocks, block_to_block_type
 from textnode import TextNode, TextType
+from process_markdown import BlockType
 
-class TestSplitNodesDelimiter(unittest.TestCase):
+class TestProcessMarkdown(unittest.TestCase):
     def test_no_delimiters(self):
         nodes = [TextNode("hello world", TextType.PLAIN)]
         result = split_nodes_delimiter(nodes, "**", TextType.BOLD)
@@ -296,6 +299,71 @@ This is the same paragraph on a new line
                 "last paragraph"
             ],
         )
+
+    def test_markdown_to_blocks_preserve_internal_newlines_and_lists(self):
+        md = "line1\nline2\n\n- item1\n- item2\n\nlast paragraph"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "line1\nline2",
+                "- item1\n- item2",
+                "last paragraph"
+            ],
+        )
+
+    def test_block_to_block_type_paragraph(self):
+        self.assertEqual(block_to_block_type("This is a simple paragraph."), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_unordered_list(self):
+        block = "- item one\n- item two\n- item three"
+        self.assertEqual(block_to_block_type(block), BlockType.UNORDERED_LIST)
+
+    def test_block_to_block_type_ordered_list(self):
+        block = "1. first\n2. second\n3. third"
+        self.assertEqual(block_to_block_type(block), BlockType.ORDERED_LIST)
+
+    def test_block_to_block_type_code_fence(self):
+        block = "```\npython\nprint('hello')\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_block_to_block_type_heading(self):
+        self.assertEqual(block_to_block_type("# Heading 1"), BlockType.HEADING)
+
+    def test_block_to_block_type_blockquote(self):
+        self.assertEqual(block_to_block_type("> quoted text\n> more quote"), BlockType.QUOTE)
+
+    def test_block_to_block_type_code_fence_strict(self):
+        block = "```\nprint('hello')\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_block_to_block_type_code_fence_with_language_not_detected(self):
+        # block starts with ```python (not "```\n") so current implementation should NOT treat it as CODE
+        block = "```python\nprint('hello')\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_heading_levels_not_match(self):
+        # only "# " is recognized as heading in current implementation
+        self.assertEqual(block_to_block_type("## Subheading"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_block_type("### Another"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_blockquote_with_leading_space(self):
+        # leading space prevents startswith(">")
+        self.assertEqual(block_to_block_type(" > quoted text"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_unordered_list_star_not_recognized(self):
+        # only "- " is treated as UNORDERED_LIST
+        self.assertEqual(block_to_block_type("* item"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_block_type("+ item"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_ordered_list_no_space(self):
+        # missing space after dot should not match ordered list regex
+        self.assertEqual(block_to_block_type("1.first"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_block_type("2.second"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_ordered_list_multi_digit(self):
+        # multi-digit numbers with dot and space should be recognized
+        self.assertEqual(block_to_block_type("10. tenth item"), BlockType.ORDERED_LIST)
 
 if __name__ == "__main__":
     unittest.main()
